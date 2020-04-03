@@ -1,0 +1,279 @@
+Sub CreateSheets()
+'For Help Contact Amanda Norseth, Ext 55459, Created for Employee Health 2019.01.21
+'For use with EH Billing form EH G drive-->General-->Nursing-->Billing
+'Works with OHM report 
+
+'Known Issues:
+    'Last tab still has duplicates as of 2.26.19
+    
+
+'***********Step 1-Copy list of companies and remove duplicates***********
+
+'Declare variables
+Dim s1 As Worksheet, s2 As Worksheet, c As Range
+'Asign Sheet names
+Set s1 = Sheets("OHMReport")
+Set s2 = Sheets("List Companies")
+
+
+'Optimize Macro Speed
+Application.ScreenUpdating = False
+Application.EnableEvents = False
+Application.Calculation = xlCalculationManual
+
+'Sheet 1 copy Column c and paste in A1 in sheet 2
+s1.Range("C:C").Copy s2.Range("A1")
+'Sheet 2 remove duplicates, first row no header info
+s2.Range("A:A").RemoveDuplicates Columns:=1, Header:=xlNo
+
+Dim ListLastRow As Integer
+ListLastRow = s2.Range("A1000").End(xlUp).Row
+Dim i As Integer
+'Added 4.2.19 to resolve conflict with company names too long, tab name only accepts 31 characters
+    'check row 1 to last row
+For i = 1 To ListLastRow
+    'If longer than 31 characters
+If Len(Cells(i, 1)) > 31 Then
+    'Cut to 31 Characters
+Cells(i, 1) = Left(Cells(i, 1), 31)
+End If
+    'Not longer than 31 chnaracters-get next row
+Next i
+   
+'***********Step 2-'Filter out VMMC, BBH Volunteer, BRI, Volunteer Services, Travellers, Students, ZZ Top Med Center, Med Staff Services, Other***********
+
+'Declare Variables
+Dim iListCount As Integer
+Dim iCtr As Integer
+' Turn off screen updating to speed up macro.
+Application.ScreenUpdating = False
+' Get count of records to search through (list that will be deleted).
+iListCount = Sheets("List Companies").Range("A1:A30").Rows.Count
+' Loop through the "master" list.
+For Each x In Sheets("Filter List").Range("FilterList")
+' Loop through all records in the second list.
+For iCtr = 1 To iListCount
+' Do comparison of next record.
+' To specify a different column, change 1 to the column number.
+If x.Value = Sheets("List Companies").Cells(iCtr, 1).Value Then
+' If match is true then delete row.
+Sheets("List Companies").Cells(iCtr, 1).Delete xlShiftUp
+' Increment counter to account for deleted row.
+iCtr = iCtr + 1
+End If
+Next iCtr
+Next
+
+'***********Step 3-Create a tab for each remaining list item and fill in company info***********
+
+'Define variables
+Dim sh3 As Worksheet, sh2 As Worksheet
+'Assign names
+Set sh3 = Sheets("Blank Copy")
+Set sh2 = Sheets("List Companies")
+Dim ThsSht As Worksheet
+Set ThsSht = ActiveWorkbook.ActiveSheet
+    'For each range in List Companies name a tab
+    For Each c In sh2.Range("A1", sh2.Cells(Rows.Count, 1).End(xlUp))
+        'Copy Blank Copy after each tab
+        sh3.Copy After:=Sheets(Sheets.Count)
+        'Fill in name from list
+        ActiveSheet.name = c.Value
+        'Name the tab
+        ActiveSheet.[B2] = ActiveSheet.name
+        'In Cell B3 enter index match formula to find co name from Company Data Tab
+        Range("B3").Select
+    ActiveCell.FormulaR1C1 = _
+        "=IFERROR(INDEX(Table31[[#All],[Company Name]:[Contact Person]],MATCH(R2C2,Table31[[#All],[Company Name]],0),2),"""")"
+    'In Cell B4 enter index match formula to find co Address from Company Data Tab
+          Range("B4").Select
+           ActiveCell.FormulaR1C1 = _
+           "=IFERROR(INDEX(Table31[[#All],[Company Name]:[Address Line]],MATCH(R2C2,Table31[[#All],[Company Name]],0),3),"""")"
+    'In Cell B5 enter index match formula to find co City, State, Zip from Company Data Tab
+           Range("B5").Select
+           ActiveCell.FormulaR1C1 = _
+           "=IFERROR(INDEX(Table31[[#All],[Company Name]:[City State Zip]],MATCH(R2C2,Table31[[#All],[Company Name]],0),4),"""")"
+    'In Cell C2 enter index match formula to find secondary contact from Company Data Tab
+             Range("C2").Select
+           ActiveCell.FormulaR1C1 = _
+           "=IFERROR(INDEX(Table31[[#All],[Company Name]:[Contact 2]],MATCH(R2C2,Table31[[#All],[Company Name]],0),5),"""")"
+    'In Cell C3 enter index match formula to find co phone from Company Data Tab
+              Range("C3").Select
+           ActiveCell.FormulaR1C1 = _
+           "=IFERROR(INDEX(Table31[#All],MATCH(R2C2,Table31[[#All],[Company Name]],0),6),"""")"
+    'In Cell C3 enter index match formula to find co phone from Company Data Tab
+            Next
+
+'***********Step 4-Fill in Staff names and remove duplicates***********
+
+'Declare/Define variables
+Dim ws As Worksheet
+Set s1 = Sheets("OHMReport")
+Dim name As String
+Dim dept As String
+Dim LastRow As Integer
+
+Dim FinalRow As Integer
+FinalRow = s1.Range("A10000").End(xlUp).Row 'CHANGE TO LAST ROW OF TABLE?
+dept = ActiveSheet.Range("B2").Value
+Dim sourceCol As Integer, rowCount As Integer, currentRow As Integer
+    Dim currentRowValue As String
+'column B has a value of 2
+    sourceCol = 2
+    rowCount = Cells(Rows.Count, sourceCol).End(xlUp).Row
+'For each worksheet that is not "Instructions", "OHM Report", "DropDown", "List Companies", "Filter List", and "Blank Copy"
+For Each ws In ThisWorkbook.Worksheets
+    If ws.name <> "Instructions" And ws.name <> "OHM Report" And ws.name <> "DropDown" And ws.name <> "List Companies" And ws.name <> "Filter List" And ws.name <> "Blank Copy" And ws.name <> "Company Data" Then
+    'From row 2 to Last row
+    For i = 2 To FinalRow
+    On Error Resume Next
+   'If OHM report list column 3 matches company name then copy value from column 1
+    If s1.Cells(i, 3).Value = ws.Range("B2").Value Then
+        s1.Cells(i, 1).Copy
+        'Then paste into next blank row on corresponding page
+        ws.Cells(Rows.Count, sourceCol).End(xlUp).Offset(1, 0).PasteSpecial xlPasteValues
+    '***Adds date of visit***
+        s1.Cells(i, 5).Copy
+        ws.Cells(Rows.Count, sourceCol).End(xlUp).Offset(0, -1).PasteSpecial xlPasteValues
+ '******
+  End If
+  Next i
+           'Remove duplicates from each tab
+            ws.Range("$B$16:$B$500").RemoveDuplicates Columns:=2, Header:=xlNo
+             
+             End If
+        Next ws
+'*****Turn back on screen updating etc*****
+Application.ScreenUpdating = True
+Application.EnableEvents = True
+Application.Calculation = xlCalculationAutomatic
+
+End Sub
+
+Sub Splitbook()
+'Spilts workbook into individual files
+
+Dim ws As Worksheet
+
+Dim xPath As String
+xPath = Application.ActiveWorkbook.Path
+
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+
+For Each ws In ThisWorkbook.Worksheets
+    If ws.name <> "Instructions" And ws.name <> "OHM Report" And ws.name <> "DropDown" And ws.name <> "List Companies" And ws.name <> "Filter List" And ws.name <> "Blank Copy" And ws.name <> "Company Data" Then
+    ws.Copy
+    Application.ActiveWorkbook.SaveAs Filename:=xPath & "\" & ws.name & ".xlsx"
+    Application.ActiveWorkbook.Close False
+    
+End If
+Next ws
+
+
+Application.DisplayAlerts = True
+Application.ScreenUpdating = True
+End Sub
+
+
+
+        sh3.Copy After:=Sheets(Sheets.Count)
+        'Fill in name from list
+        ActiveSheet.name = c.Value
+        'Name the tab
+        ActiveSheet.[B2] = ActiveSheet.name
+        'In Cell B3 enter index match formula to find co name from Company Data Tab
+        Range("B3").Select
+    ActiveCell.FormulaR1C1 = _
+        "=IFERROR(INDEX(Table31[[#All],[Company Name]:[Contact Person]],MATCH(R2C2,Table31[[#All],[Company Name]],0),2),"""")"
+    'In Cell B4 enter index match formula to find co Address from Company Data Tab
+          Range("B4").Select
+           ActiveCell.FormulaR1C1 = _
+           "=IFERROR(INDEX(Table31[[#All],[Company Name]:[Address Line]],MATCH(R2C2,Table31[[#All],[Company Name]],0),3),"""")"
+    'In Cell B5 enter index match formula to find co City, State, Zip from Company Data Tab
+           Range("B5").Select
+           ActiveCell.FormulaR1C1 = _
+           "=IFERROR(INDEX(Table31[[#All],[Company Name]:[City State Zip]],MATCH(R2C2,Table31[[#All],[Company Name]],0),4),"""")"
+    'In Cell C2 enter index match formula to find secondary contact from Company Data Tab
+             Range("C2").Select
+           ActiveCell.FormulaR1C1 = _
+           "=IFERROR(INDEX(Table31[[#All],[Company Name]:[Contact 2]],MATCH(R2C2,Table31[[#All],[Company Name]],0),5),"""")"
+    'In Cell C3 enter index match formula to find co phone from Company Data Tab
+              Range("C3").Select
+           ActiveCell.FormulaR1C1 = _
+           "=IFERROR(INDEX(Table31[#All],MATCH(R2C2,Table31[[#All],[Company Name]],0),6),"""")"
+    'In Cell C3 enter index match formula to find co phone from Company Data Tab
+            Next
+
+'***********Step 4-Fill in Staff names and remove duplicates***********
+
+'Declare/Define variables
+Dim ws As Worksheet
+Set s1 = Sheets("OHMReport")
+Dim name As String
+Dim dept As String
+Dim LastRow As Integer
+
+Dim FinalRow As Integer
+FinalRow = s1.Range("A10000").End(xlUp).Row 'CHANGE TO LAST ROW OF TABLE?
+dept = ActiveSheet.Range("B2").Value
+Dim sourceCol As Integer, rowCount As Integer, currentRow As Integer
+    Dim currentRowValue As String
+'column B has a value of 2
+    sourceCol = 2
+    rowCount = Cells(Rows.Count, sourceCol).End(xlUp).Row
+'For each worksheet that is not "Instructions", "OHM Report", "DropDown", "List Companies", "Filter List", and "Blank Copy"
+For Each ws In ThisWorkbook.Worksheets
+    If ws.name <> "Instructions" And ws.name <> "OHM Report" And ws.name <> "DropDown" And ws.name <> "List Companies" And ws.name <> "Filter List" And ws.name <> "Blank Copy" And ws.name <> "Company Data" Then
+    'From row 2 to Last row
+    For i = 2 To FinalRow
+    On Error Resume Next
+   'If OHM report list column 3 matches company name then copy value from column 1
+    If s1.Cells(i, 3).Value = ws.Range("B2").Value Then
+        s1.Cells(i, 1).Copy
+        'Then paste into next blank row on corresponding page
+        ws.Cells(Rows.Count, sourceCol).End(xlUp).Offset(1, 0).PasteSpecial xlPasteValues
+    '***Adds date of visit***
+        s1.Cells(i, 5).Copy
+        ws.Cells(Rows.Count, sourceCol).End(xlUp).Offset(0, -1).PasteSpecial xlPasteValues
+ '******
+  End If
+  Next i
+           'Remove duplicates from each tab
+            ws.Range("$B$16:$B$500").RemoveDuplicates Columns:=2, Header:=xlNo
+             
+             End If
+        Next ws
+'*****Turn back on screen updating etc*****
+Application.ScreenUpdating = True
+Application.EnableEvents = True
+Application.Calculation = xlCalculationAutomatic
+
+End Sub
+
+Sub Splitbook()
+'Spilts workbook into individual files
+
+Dim ws As Worksheet
+
+Dim xPath As String
+xPath = Application.ActiveWorkbook.Path
+
+Application.ScreenUpdating = False
+Application.DisplayAlerts = False
+
+For Each ws In ThisWorkbook.Worksheets
+    If ws.name <> "Instructions" And ws.name <> "OHM Report" And ws.name <> "DropDown" And ws.name <> "List Companies" And ws.name <> "Filter List" And ws.name <> "Blank Copy" And ws.name <> "Company Data" Then
+    ws.Copy
+    Application.ActiveWorkbook.SaveAs Filename:=xPath & "\" & ws.name & ".xlsx"
+    Application.ActiveWorkbook.Close False
+    
+End If
+Next ws
+
+
+Application.DisplayAlerts = True
+Application.ScreenUpdating = True
+End Sub
+
+
