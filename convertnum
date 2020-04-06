@@ -1,0 +1,17 @@
+Sub ConvertToNumber()
+'Created 4.3.19 Amanda Norseth Ext 55459 for Employee Health
+'To be used with OHM reports
+
+' Converts range to Number
+
+'Highlights the column of selected cell
+
+ActiveCell.EntireColumn.Select
+'Takes Selection,changes to number format
+
+With Selection
+    .NumberFormat = "0"
+    .Value = .Value
+End With
+
+End Sub
